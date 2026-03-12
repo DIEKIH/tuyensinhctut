@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/css/dataTables.bootstrap4.min.css">
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --primary-light: #DBEAFE;
+            --secondary-color: #F1F5F9;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --border-color: #E2E8F0;
+            --sidebar-width: 280px;
+            --sidebar-collapsed: 70px;
+            --white: #FFFFFF;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #F8FAFC;
+            color: var(--text-primary);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Mobile overlay */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--white);
+            border-right: 1px solid var(--border-color);
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            position: fixed;
+            left: 0;
+            top: 0;
+            transition: transform 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed);
+        }
+
+        .sidebar-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo::before {
+            content: '';
+            width: 28px;
+            height: 28px;
+            background: var(--primary-color);
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--secondary-color);
+            color: var(--primary-color);
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            padding: 0 1.5rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .nav-item {
+            margin-bottom: 0.25rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 400;
+            transition: all 0.15s ease;
+            position: relative;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color);
+            background-color: #F8FAFC;
+        }
+
+        .nav-link.active {
+            color: var(--primary-color);
+            background-color: var(--primary-light);
+            font-weight: 500;
+        }
+
+        .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--primary-color);
+        }
+
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--primary-color);
+            color: white;
+            font-size: 11px;
+            padding: 0.125rem 0.375rem;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Collapsed sidebar styles */
+        .sidebar.collapsed .logo span,
+        .sidebar.collapsed .nav-section-title,
+        .sidebar.collapsed .nav-link span,
+        .sidebar.collapsed .nav-badge {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            justify-content: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+            width: calc(100% - var(--sidebar-width));
+        }
+
+        .main-content.expanded {
+            margin-left: var(--sidebar-collapsed);
+            width: calc(100% - var(--sidebar-collapsed));
+        }
+
+        .top-bar {
+            background: var(--white);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .mobile-menu-btn:hover {
+            background: var(--secondary-color);
+            color: var(--primary-color);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem 0.875rem;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            outline: none;
+            flex: 1;
+            margin-left: 0.5rem;
+            font-size: 14px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .content-area {
+            padding: 1.5rem;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #1D4ED8;
+            transform: translateY(-1px);
+        }
+
+        /* Table Styles */
+        .table-container {
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th,
+        table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        table th {
+            background: #F8FAFC;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        table td {
+            color: var(--text-secondary);
+        }
+
+        table tr:hover {
+            background: #F8FAFC;
+        }
+
+        /* Status badges */
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: #DCFCE7;
+            color: #166534;
+        }
+
+        .status-badge.inactive {
+            background: #FEF3C7;
+            color: #A16207;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .content-area {
+                padding: 1rem;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 992px) {
+            :root {
+                --sidebar-width: 260px;
+            }
+
+            .search-box {
+                max-width: 250px;
+            }
+
+            .user-menu span {
+                display: none;
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .top-bar {
+                padding: 1rem;
+            }
+
+            .search-box {
+                display: none;
+            }
+
+            .content-area {
+                padding: 1rem;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .page-title {
+                font-size: 1.25rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .user-menu {
+                gap: 0.5rem;
+            }
+
+            /* Table responsive improvements */
+            table th,
+            table td {
+                padding: 0.5rem;
+                font-size: 13px;
+            }
+
+            .table-container {
+                margin: 0 -1rem;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content-area {
+                padding: 0.75rem;
+            }
+
+            .top-bar {
+                padding: 0.75rem;
+            }
+
+            .btn-primary {
+                padding: 0.625rem 1rem;
+                font-size: 13px;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+
+            table th,
+            table td {
+                padding: 0.375rem;
+                font-size: 12px;
+            }
+
+            .page-title {
+                font-size: 1.125rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --secondary-color: #1F2937;
+                --text-primary: #F9FAFB;
+                --text-secondary: #9CA3AF;
+                --border-color: #374151;
+                --white: #111827;
+            }
+
+            body {
+                background-color: #0F172A;
+            }
+
+            .table-container,
+            .sidebar,
+            .top-bar {
+                background: var(--white);
+            }
+
+            table th {
+                background: #1F2937;
+            }
+
+            table tr:hover {
+                background: #1F2937;
+            }
+        }
+
+        /* Loading states */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid var(--primary-color);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+        /* Focus states */
+        button:focus,
+        input:focus,
+        select:focus,
+        .nav-link:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="dashboard-container">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="logo">
+                    <span>Modernize</span>
+                </a>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link active">
+                            <i class="fas fa-newspaper"></i>
+                            <span>Bài viết</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-box"></i>
+                            <span>Products</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-tags"></i>
+                            <span>Categories</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>Customers</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Reports</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-ticket-alt"></i>
+                            <span>Coupons</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-inbox"></i>
+                            <span>Inbox</span>
+                            <span class="nav-badge">3</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Authentication</div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Sign Up</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="#" class="nav-link">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Sign In</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content" id="mainContent">
+            <header class="top-bar">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="search-box">
+                        <i class="fas fa-search" style="color: var(--text-secondary);"></i>
+                        <input type="text" placeholder="Tìm kiếm...">
+                    </div>
+                </div>
+
+                <div class="user-menu">
+                    <i class="fas fa-bell" style="font-size: 1.2rem; color: var(--text-secondary); position: relative;">
+                        <span class="nav-badge" style="position: absolute; top: -8px; right: -8px; margin: 0;">3</span>
+                    </i>
+                    <div class="user-avatar">XP</div>
+                    <span style="font-weight: 400; font-size: 14px;">X'eriya Ponald</span>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <div class="page-header">
+                    <h1 class="page-title">Danh sách Bài viết</h1>
+                    <button class="btn-primary" id="addBaiVietBtn">
+                        <i class="fas fa-plus"></i>
+                        Thêm Bài viết
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-responsive">
+                        <table id="baivietTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Tác giả</th>
+                                    <th>Ngày đăng</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>Hướng dẫn sử dụng Laravel 10</td>
+                                    <td>Nguyễn Văn A</td>
+                                    <td>25/09/2025</td>
+                                    <td><span class="status-badge active">Hoạt động</span></td>
+                                    <td>
+                                        <button class="btn-primary" style="padding: 0.375rem 0.75rem; font-size: 12px;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Responsive Web Design với CSS Grid</td>
+                                    <td>Trần Thị B</td>
+                                    <td>24/09/2025</td>
+                                    <td><span class="status-badge inactive">Bản nháp</span></td>
+                                    <td>
+                                        <button class="btn-primary" style="padding: 0.375rem 0.75rem; font-size: 12px;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>JavaScript Modern ES6+ Features</td>
+                                    <td>Lê Văn C</td>
+                                    <td>23/09/2025</td>
+                                    <td><span class="status-badge active">Hoạt động</span></td>
+                                    <td>
+                                        <button class="btn-primary" style="padding: 0.375rem 0.75rem; font-size: 12px;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>Database Optimization Techniques</td>
+                                    <td>Phạm Thị D</td>
+                                    <td>22/09/2025</td>
+                                    <td><span class="status-badge active">Hoạt động</span></td>
+                                    <td>
+                                        <button class="btn-primary" style="padding: 0.375rem 0.75rem; font-size: 12px;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>API Development Best Practices</td>
+                                    <td>Hoàng Văn E</td>
+                                    <td>21/09/2025</td>
+                                    <td><span class="status-badge inactive">Bản nháp</span></td>
+                                    <td>
+                                        <button class="btn-primary" style="padding: 0.375rem 0.75rem; font-size: 12px;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Mobile menu toggle
+            $('#mobileMenuBtn').on('click', function () {
+                $('#sidebar').toggleClass('mobile-open');
+                $('#sidebarOverlay').toggleClass('active');
+            });
+
+            // Sidebar overlay click
+            $('#sidebarOverlay').on('click', function () {
+                $('#sidebar').removeClass('mobile-open');
+                $(this).removeClass('active');
+            });
+
+            // Desktop sidebar toggle
+            $('#sidebarToggle').on('click', function () {
+                if (window.innerWidth > 768) {
+                    $('#sidebar').toggleClass('collapsed');
+                    $('#mainContent').toggleClass('expanded');
+
+                    const icon = $(this).find('i');
+                    if ($('#sidebar').hasClass('collapsed')) {
+                        icon.removeClass('fa-chevron-left').addClass('fa-chevron-right');
+                    } else {
+                        icon.removeClass('fa-chevron-right').addClass('fa-chevron-left');
+                    }
+                }
+            });
+
+            // Handle window resize
+            $(window).on('resize', function () {
+                if (window.innerWidth > 768) {
+                    $('#sidebar').removeClass('mobile-open');
+                    $('#sidebarOverlay').removeClass('active');
+                } else {
+                    $('#sidebar').removeClass('collapsed');
+                    $('#mainContent').removeClass('expanded');
+                    $('#sidebarToggle i').removeClass('fa-chevron-right').addClass('fa-chevron-left');
+                }
+            });
+
+            // Search functionality
+            $('.search-box input').on('keyup', function () {
+                const searchTerm = $(this).val().toLowerCase();
+                $('#baivietTable tbody tr').each(function () {
+                    const rowText = $(this).text().toLowerCase();
+                    $(this).toggle(rowText.includes(searchTerm));
+                });
+            });
+
+            // Add article button
+            $('#addBaiVietBtn').on('click', function () {
+                alert('Thêm bài viết mới - Chức năng sẽ được phát triển');
+            });
+
+            // Edit buttons
+            $('.table-responsive').on('click', 'button', function () {
+                const row = $(this).closest('tr');
+                const title = row.find('td:eq(1)').text();
+                alert('Chỉnh sửa bài viết: ' + title);
+            });
+
+            // Enhanced table interactions
+            $('#baivietTable tbody tr').on('click', function (e) {
+                if (!$(e.target).is('button') && !$(e.target).is('i')) {
+                    $(this).toggleClass('selected');
+                }
+            });
+
+            // Simulate data loading
+            function simulateDataLoad() {
+                const tableBody = $('#baivietTable tbody');
+                tableBody.addClass('loading');
+
+                setTimeout(() => {
+                    tableBody.removeClass('loading');
+                }, 1000);
+            }
+
+            // Auto-refresh simulation
+            setInterval(() => {
+                if (Math.random() > 0.9) { // 10% chance every 30 seconds
+                    simulateDataLoad();
+                }
+            }, 30000);
+        });
+
+        // Add some CSS for selected rows
+        const style = document.createElement('style');
+        style.textContent = `
+            #baivietTable tbody tr.selected {
+                background-color: var(--primary-light) !important;
+            }
+            
+            .table-responsive {
+                scrollbar-width: thin;
+                scrollbar-color: var(--border-color) transparent;
+            }
+            
+            .table-responsive::-webkit-scrollbar {
+                height: 6px;
+            }
+            
+            .table-responsive::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .table-responsive::-webkit-scrollbar-thumb {
+                background: var(--border-color);
+                border-radius: 3px;
+            }
+            
+            .table-responsive::-webkit-scrollbar-thumb:hover {
+                background: var(--text-secondary);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>
